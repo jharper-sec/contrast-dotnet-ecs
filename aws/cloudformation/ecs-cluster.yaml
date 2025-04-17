@@ -1,0 +1,168 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template for creating an ECS Cluster for Windows Containers with Contrast Security .NET Framework agent'
+
+Parameters:
+  ClusterName:
+    Type: String
+    Default: windows-contrast-cluster
+    Description: Name of the ECS cluster
+  
+  LaunchType:
+    Type: String
+    Default: FARGATE
+    AllowedValues:
+      - FARGATE
+      - EC2
+    Description: The launch type for the ECS cluster (FARGATE or EC2)
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: The VPC to deploy the ECS cluster in
+
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Subnets for the ECS cluster
+
+Conditions:
+  IsFargate: !Equals [!Ref LaunchType, 'FARGATE']
+  IsEC2: !Equals [!Ref LaunchType, 'EC2']
+
+Resources:
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref ClusterName
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
+      Tags:
+        - Key: Application
+          Value: ContrastSecurity
+        - Key: Environment
+          Value: Demo
+
+  # EC2 Capacity Provider (only created if LaunchType is EC2)
+  ECSCapacityProvider:
+    Type: AWS::ECS::CapacityProvider
+    Condition: IsEC2
+    Properties:
+      AutoScalingGroupProvider:
+        AutoScalingGroupArn: !GetAtt WindowsContainerASG.Arn
+        ManagedScaling:
+          Status: ENABLED
+          TargetCapacity: 100
+        ManagedTerminationProtection: ENABLED
+
+  ECSClusterCapacityProviderAssociation:
+    Type: AWS::ECS::ClusterCapacityProviderAssociations
+    Condition: IsEC2
+    Properties:
+      Cluster: !Ref ECSCluster
+      CapacityProviders:
+        - !Ref ECSCapacityProvider
+      DefaultCapacityProviderStrategy:
+        - CapacityProvider: !Ref ECSCapacityProvider
+          Weight: 1
+
+  # EC2 Instance Role and Instance Profile for ECS (only if EC2 launch type)
+  ECSInstanceRole:
+    Type: AWS::IAM::Role
+    Condition: IsEC2
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role'
+        - 'arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore'
+
+  ECSInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Condition: IsEC2
+    Properties:
+      Roles:
+        - !Ref ECSInstanceRole
+
+  # Security Group for EC2 Instances (only if EC2 launch type)
+  WindowsContainerSG:
+    Type: AWS::EC2::SecurityGroup
+    Condition: IsEC2
+    Properties:
+      GroupDescription: Security group for Windows ECS container instances
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: 3389
+          ToPort: 3389
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: -1
+
+  # ASG for Windows Container Instances (only if EC2 launch type)
+  WindowsContainerASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Condition: IsEC2
+    Properties:
+      VPCZoneIdentifier: !Ref SubnetIds
+      LaunchTemplate:
+        LaunchTemplateId: !Ref WindowsContainerLaunchTemplate
+        Version: !GetAtt WindowsContainerLaunchTemplate.LatestVersionNumber
+      MinSize: 1
+      MaxSize: 4
+      DesiredCapacity: 2
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ECS-Windows-Container
+          PropagateAtLaunch: true
+        - Key: Application
+          Value: ContrastSecurity
+          PropagateAtLaunch: true
+
+  WindowsContainerLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Condition: IsEC2
+    Properties:
+      LaunchTemplateName: !Sub ${AWS::StackName}-windows-container-lt
+      LaunchTemplateData:
+        ImageId: ami-PLACEHOLDER # Replace with actual Windows ECS-optimized AMI for your region
+        InstanceType: m5.large
+        IamInstanceProfile:
+          Name: !Ref ECSInstanceProfile
+        SecurityGroupIds:
+          - !Ref WindowsContainerSG
+        UserData:
+          Fn::Base64: !Sub |
+            <powershell>
+            # Initialize ECS agent
+            Import-Module ECSTools
+            Initialize-ECSAgent -Cluster ${ClusterName}
+            
+            # Configure Windows features for containers
+            Install-WindowsFeature -Name Containers
+            </powershell>
+
+Outputs:
+  ClusterName:
+    Description: Name of the ECS Cluster
+    Value: !Ref ECSCluster
+    Export:
+      Name: !Sub "${AWS::StackName}-ClusterName"
+
+  ClusterArn:
+    Description: ARN of the ECS Cluster
+    Value: !GetAtt ECSCluster.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ClusterArn"

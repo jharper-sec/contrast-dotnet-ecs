@@ -1,0 +1,206 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template for ECS Task and Service with Contrast Security .NET Framework agent on Windows containers'
+
+Parameters:
+  ClusterName:
+    Type: String
+    Description: Name of the ECS cluster to deploy the service to
+  
+  ImageRepositoryUri:
+    Type: String
+    Description: URI of the ECR repository where the image is stored
+  
+  ImageTag:
+    Type: String
+    Default: latest
+    Description: Tag of the Docker image to deploy
+  
+  LaunchType:
+    Type: String
+    Default: FARGATE
+    AllowedValues:
+      - FARGATE
+      - EC2
+    Description: The launch type for the ECS task (FARGATE or EC2)
+  
+  OperatingSystemFamily:
+    Type: String
+    Default: WINDOWS_SERVER_2022_CORE
+    AllowedValues:
+      - WINDOWS_SERVER_2019_CORE
+      - WINDOWS_SERVER_2019_FULL
+      - WINDOWS_SERVER_2022_CORE
+      - WINDOWS_SERVER_2022_FULL
+    Description: The Windows OS family to use (must match container base OS)
+  
+  ContrastSecretName:
+    Type: String
+    Description: Name of the secret in AWS Secrets Manager containing Contrast agent credentials
+  
+  TaskCpu:
+    Type: String
+    Default: '2048'
+    Description: CPU units for the task (1 vCPU = 1024 units)
+  
+  TaskMemory:
+    Type: String
+    Default: '4096'
+    Description: Memory for the task in MiB
+  
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: The VPC to deploy the ECS service in
+  
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Subnets for the ECS service
+  
+  AssignPublicIp:
+    Type: String
+    Default: ENABLED
+    AllowedValues:
+      - ENABLED
+      - DISABLED
+    Description: Whether to assign a public IP address to the Fargate task
+
+Conditions:
+  IsFargate: !Equals [!Ref LaunchType, 'FARGATE']
+  IsEC2: !Equals [!Ref LaunchType, 'EC2']
+
+Resources:
+  # Task Execution Role - Required to pull from ECR and access Secrets Manager
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-ECSTaskExecutionRole"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
+      Policies:
+        - PolicyName: SecretsManagerReadAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'secretsmanager:GetSecretValue'
+                Resource:
+                  - !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${ContrastSecretName}*'
+
+  # Security Group for the Task
+  TaskSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for ECS Tasks running Contrast Security agent
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: -1
+
+  # CloudWatch Logs Group
+  ContrastAppLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/ecs/dotnet-framework-contrast-sample'
+      RetentionInDays: 30
+
+  # ECS Task Definition
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: dotnet-framework-contrast-sample
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - !Ref LaunchType
+      Cpu: !Ref TaskCpu
+      Memory: !Ref TaskMemory
+      RuntimePlatform:
+        OperatingSystemFamily: !Ref OperatingSystemFamily
+        CpuArchitecture: X86_64
+      ContainerDefinitions:
+        - Name: dotnet-app
+          Image: !Sub "${ImageRepositoryUri}:${ImageTag}"
+          Essential: true
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref ContrastAppLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+          PortMappings:
+            - ContainerPort: 80
+              Protocol: tcp
+          Secrets:
+            - Name: CONTRAST__API__URL
+              ValueFrom: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${ContrastSecretName}:CONTRAST__API__URL::"
+            - Name: CONTRAST__API__API_KEY
+              ValueFrom: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${ContrastSecretName}:CONTRAST__API__API_KEY::"
+            - Name: CONTRAST__API__SERVICE_KEY
+              ValueFrom: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${ContrastSecretName}:CONTRAST__API__SERVICE_KEY::"
+            - Name: CONTRAST__API__USER_NAME
+              ValueFrom: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${ContrastSecretName}:CONTRAST__API__USER_NAME::"
+          Environment:
+            - Name: CONTRAST__APPLICATION__NAME
+              Value: dotnet-framework-ecs-demo
+            - Name: CONTRAST__SERVER__NAME
+              Value: !Sub "ecs-windows-${AWS::StackName}"
+
+  # ECS Service
+  ECSService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: dotnet-framework-contrast-svc
+      Cluster: !Ref ClusterName
+      TaskDefinition: !Ref TaskDefinition
+      DesiredCount: 1
+      LaunchType: !Ref LaunchType
+      DeploymentConfiguration:
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: !Ref AssignPublicIp
+          SecurityGroups:
+            - !GetAtt TaskSecurityGroup.GroupId
+          Subnets: !Ref SubnetIds
+      EnableExecuteCommand: true
+      PropagateTags: SERVICE
+      Tags:
+        - Key: Application
+          Value: ContrastSecurity
+        - Key: Environment
+          Value: Demo
+
+Outputs:
+  TaskDefinitionArn:
+    Description: ARN of the created Task Definition
+    Value: !Ref TaskDefinition
+    Export:
+      Name: !Sub "${AWS::StackName}-TaskDefinitionArn"
+
+  ServiceName:
+    Description: Name of the created ECS Service
+    Value: !GetAtt ECSService.Name
+    Export:
+      Name: !Sub "${AWS::StackName}-ServiceName"
+
+  SecurityGroupId:
+    Description: ID of the Security Group created for the Task
+    Value: !GetAtt TaskSecurityGroup.GroupId
+    Export:
+      Name: !Sub "${AWS::StackName}-SecurityGroupId"

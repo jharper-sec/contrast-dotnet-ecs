@@ -1,0 +1,17 @@
+# terraform.tfvars.example - Example variable values
+# Copy this file to terraform.tfvars and update with your values
+
+aws_region           = "us-east-1"
+name_prefix          = "contrast-dotnet-demo"
+vpc_id               = "vpc-0123456789abcdef0"
+subnet_ids           = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1"]
+contrast_secret_name = "contrast-agent-credentials"
+launch_type          = "FARGATE" # or "EC2"
+os_family            = "WINDOWS_SERVER_2022_CORE"
+task_cpu             = "2048"
+task_memory          = "4096"
+assign_public_ip     = true
+
+# Only needed if launch_type is "EC2"
+ec2_ami_id         = "ami-0123456789abcdef0" # Windows ECS-optimized AMI ID
+ec2_instance_type  = "m5.large"
