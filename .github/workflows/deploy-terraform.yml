@@ -54,6 +54,9 @@ jobs:
         os_family = "WINDOWS_SERVER_2022_CORE"
         assign_public_ip = true
         EOF
+        
+        # Format the dynamically created file
+        terraform fmt terraform.tfvars
     
     - name: Terraform Init
       run: terraform init
