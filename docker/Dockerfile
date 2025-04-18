@@ -19,10 +19,8 @@ WORKDIR /app/aspnetmvcapp
 # Build the application in Release configuration
 RUN msbuild /p:Configuration=Release -r:False
 
-# Contrast agent stage: Pull the Contrast agent image to copy files from it
+# Contrast agent stage: Pull the Contrast agent image 
 FROM contrast/agent-dotnet-framework:latest AS contrast
-# This is a debugging step to see what's in the image
-RUN dir C:\ > C:\directory_listing.txt
 
 # Runtime stage: Uses the smaller ASP.NET runtime image
 FROM mcr.microsoft.com/dotnet/framework/aspnet:4.8 AS runtime
@@ -32,13 +30,12 @@ WORKDIR /inetpub/wwwroot
 COPY --from=build /app/aspnetmvcapp/. ./
 
 # >>> ADD CONTRAST AGENT FILES <<<
-# Create the Contrast directory first
+# Create the Contrast directory
 RUN mkdir C:\Contrast
 
-# Try copying with a wildcard approach
-COPY --from=contrast C:\* C:\Contrast\
-# Copy the directory listing for debugging
-COPY --from=contrast C:\directory_listing.txt C:\directory_listing.txt
+# Try common paths where Contrast files might be located
+# Option 1: Try to copy files from the agent image root
+COPY --from=contrast / C:\Contrast\
 
 # >>> SET CONTRAST PROFILER ENV VARS <<<
 # Enable the .NET Profiling API
