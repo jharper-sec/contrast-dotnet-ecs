@@ -14,14 +14,20 @@ jobs:
   docker:
     needs: build
     if: github.event_name != 'pull_request'
+    permissions:
+      id-token: write
     uses: ./.github/workflows/build-docker.yml
   
   infrastructure:
     needs: docker
     if: github.event_name != 'pull_request'
+    permissions:
+      id-token: write
     uses: ./.github/workflows/deploy-terraform.yml
   
   deploy:
     needs: infrastructure
     if: github.event_name != 'pull_request'
+    permissions:
+      id-token: write
     uses: ./.github/workflows/deploy-ecs.yml
