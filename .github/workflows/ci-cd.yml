@@ -17,6 +17,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    secrets: inherit
     uses: ./.github/workflows/build-docker.yml
   
   infrastructure:
@@ -25,6 +26,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    secrets: inherit
     uses: ./.github/workflows/deploy-terraform.yml
   
   deploy:
@@ -33,4 +35,5 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    secrets: inherit
     uses: ./.github/workflows/deploy-ecs.yml
