@@ -44,7 +44,7 @@ jobs:
       shell: pwsh
       run: |
         $registry = "${{ steps.login-ecr.outputs.registry }}"
-        docker build -t $registry/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} -t $registry/${{ env.ECR_REPOSITORY }}:latest -f ./src/Dockerfile ./src
+        docker build -t $registry/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} -t $registry/${{ env.ECR_REPOSITORY }}:latest -f ./docker/Dockerfile ./src
     
     - name: Push Docker image
       if: github.event_name != 'pull_request'
