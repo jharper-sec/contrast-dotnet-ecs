@@ -64,7 +64,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: ./src
-        file: ./docker/Dockerfile
+        file: ./src/Dockerfile
         platforms: windows/amd64
         push: ${{ github.event_name != 'pull_request' }}
         tags: |
