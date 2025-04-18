@@ -29,21 +29,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Debug AWS credentials
-      shell: pwsh
-      run: |
-        if (-not [string]::IsNullOrEmpty("${{ secrets.AWS_ACCESS_KEY_ID }}")) {
-          Write-Output "AWS_ACCESS_KEY_ID is set (not showing value for security)"
-        } else {
-          Write-Output "AWS_ACCESS_KEY_ID is not set"
-        }
-        
-        if (-not [string]::IsNullOrEmpty("${{ secrets.AWS_SECRET_ACCESS_KEY }}")) {
-          Write-Output "AWS_SECRET_ACCESS_KEY is set (not showing value for security)"
-        } else {
-          Write-Output "AWS_SECRET_ACCESS_KEY is not set"
-        }
-
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
@@ -55,18 +40,16 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
     
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-      with:
-        driver: docker # Use the native Docker driver instead of docker-container
+    - name: Build and tag Docker image
+      shell: pwsh
+      run: |
+        $registry = "${{ steps.login-ecr.outputs.registry }}"
+        docker build -t $registry/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} -t $registry/${{ env.ECR_REPOSITORY }}:latest -f ./src/Dockerfile ./src
     
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: ./src
-        file: ./src/Dockerfile
-        platforms: windows/amd64
-        push: ${{ github.event_name != 'pull_request' }}
-        tags: |
-          ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
-          ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+    - name: Push Docker image
+      if: github.event_name != 'pull_request'
+      shell: pwsh
+      run: |
+        $registry = "${{ steps.login-ecr.outputs.registry }}"
+        docker push $registry/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+        docker push $registry/${{ env.ECR_REPOSITORY }}:latest
