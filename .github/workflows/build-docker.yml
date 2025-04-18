@@ -26,18 +26,19 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Debug AWS credentials
+      shell: pwsh
       run: |
-        if [ ! -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then 
-          echo "AWS_ACCESS_KEY_ID is set (not showing value for security)"
-        else
-          echo "AWS_ACCESS_KEY_ID is not set"
-        fi
+        if (-not [string]::IsNullOrEmpty("${{ secrets.AWS_ACCESS_KEY_ID }}")) {
+          Write-Output "AWS_ACCESS_KEY_ID is set (not showing value for security)"
+        } else {
+          Write-Output "AWS_ACCESS_KEY_ID is not set"
+        }
         
-        if [ ! -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
-          echo "AWS_SECRET_ACCESS_KEY is set (not showing value for security)"
-        else
-          echo "AWS_SECRET_ACCESS_KEY is not set"
-        fi
+        if (-not [string]::IsNullOrEmpty("${{ secrets.AWS_SECRET_ACCESS_KEY }}")) {
+          Write-Output "AWS_SECRET_ACCESS_KEY is set (not showing value for security)"
+        } else {
+          Write-Output "AWS_SECRET_ACCESS_KEY is not set"
+        }
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
