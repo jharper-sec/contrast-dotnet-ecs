@@ -18,6 +18,10 @@ on:
           - prod
   workflow_call:
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   terraform:
     runs-on: ubuntu-latest
