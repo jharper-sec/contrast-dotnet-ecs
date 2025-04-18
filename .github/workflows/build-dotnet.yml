@@ -1,0 +1,38 @@
+name: Build .NET Framework Application
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - 'src/**'
+  pull_request:
+    branches: [ master ]
+    paths:
+      - 'src/**'
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v1.1
+    
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v1.1.1
+    
+    - name: Restore NuGet packages
+      run: nuget restore src/aspnetmvcapp.sln
+    
+    - name: Build solution
+      run: msbuild src/aspnetmvcapp.sln /p:Configuration=Release /p:Platform="Any CPU"
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: aspnetmvcapp
+        path: src/aspnetmvcapp/bin/

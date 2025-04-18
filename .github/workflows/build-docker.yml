@@ -1,0 +1,48 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - 'src/**'
+      - 'docker/**'
+  pull_request:
+    branches: [ master ]
+    paths:
+      - 'src/**'
+      - 'docker/**'
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    env:
+      ECR_REPOSITORY: dotnet-framework-contrast-sample
+      IMAGE_TAG: ${{ github.sha }}
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+    
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: ./src
+        file: ./docker/Dockerfile
+        platforms: windows/amd64
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: |
+          ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest

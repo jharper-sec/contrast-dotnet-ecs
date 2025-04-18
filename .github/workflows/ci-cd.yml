@@ -1,0 +1,27 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-dotnet.yml
+  
+  docker:
+    needs: build
+    if: github.event_name != 'pull_request'
+    uses: ./.github/workflows/build-docker.yml
+  
+  infrastructure:
+    needs: docker
+    if: github.event_name != 'pull_request'
+    uses: ./.github/workflows/deploy-terraform.yml
+  
+  deploy:
+    needs: infrastructure
+    if: github.event_name != 'pull_request'
+    uses: ./.github/workflows/deploy-ecs.yml
