@@ -9,7 +9,7 @@ variable "aws_region" {
 variable "name_prefix" {
   description = "Prefix used for naming resources"
   type        = string
-  default     = "contrast-dotnet-demo-v2"
+  default     = "contrast-dotnet-demo-v3"
 }
 
 variable "repository_name" {

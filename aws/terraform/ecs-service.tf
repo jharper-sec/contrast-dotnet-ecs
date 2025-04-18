@@ -90,7 +90,7 @@ resource "aws_security_group" "task_security_group" {
 
 # CloudWatch Logs Group
 resource "aws_cloudwatch_log_group" "contrast_app_logs" {
-  name              = "/ecs/dotnet-framework-contrast-sample"
+  name              = "/ecs/${var.name_prefix}-dotnet-framework-contrast-sample"
   retention_in_days = 30
 }
 
