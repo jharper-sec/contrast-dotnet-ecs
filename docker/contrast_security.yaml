@@ -1,10 +1,15 @@
 # Example contrast_security.yaml file
 # NOTE: Sensitive credentials should NOT be stored here
 # This file contains only non-sensitive configuration settings
+# You can alternatively use environment variables instead of this file
 
 # Agent configuration
 agent:
   # Set the logging level (ERROR, WARN, INFO, DEBUG, TRACE)
   logger:
-    level: INFO
-    stdout: true
+    level: INFO # CONTRAST__AGENT__LOGGER__LEVEL=INFO
+    stdout: true # CONTRAST__AGENT__LOGGER__STDOUT=true
+assess:
+  enable: true # CONTRAST__ASSESS__ENABLE=true
+protect:
+  enable: true # CONTRAST__PROTECT__ENABLE=true
