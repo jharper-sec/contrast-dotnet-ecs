@@ -131,6 +131,17 @@ resource "aws_ecs_task_definition" "dotnet_contrast" {
         }
       ]
 
+      healthCheck = {
+        command = [
+          "CMD-SHELL",
+          "curl -f http://localhost/ || exit 1"
+        ]
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 10
+      }
+
       secrets = [
         {
           name      = "CONTRAST__API__URL"
