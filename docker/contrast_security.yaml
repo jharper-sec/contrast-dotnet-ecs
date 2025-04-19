@@ -2,32 +2,9 @@
 # NOTE: Sensitive credentials should NOT be stored here
 # This file contains only non-sensitive configuration settings
 
-# Application configuration
-application:
-  # Specify the application name to override the default of 'aspnetmvcapp'
-  name: dotnet-framework-ecs-demo
-  # Specify the group for this application in the Contrast UI
-  group: aws-ecs-windows-demos
-  # Set a custom application path (required for IIS)
-  path: /
-
-# Server configuration
-server:
-  # Specify a custom server name to appear in the Contrast UI
-  name: ecs-windows-container-${HOSTNAME}
-
 # Agent configuration
 agent:
   # Set the logging level (ERROR, WARN, INFO, DEBUG, TRACE)
   logger:
     level: INFO
-    path: C:\\ContrastLogs
-  # Set polling frequency for agent/server communication
-  polling:
-    app_activity_ms: 5000
-    server_activity_ms: 60000
-
-# Default rules configuration
-rules:
-  # Set to true to assess open-source libraries
-  assess_libraries: true
+    stdout: true
