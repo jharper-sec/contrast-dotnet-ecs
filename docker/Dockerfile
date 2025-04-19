@@ -30,9 +30,6 @@ COPY --from=build /app/aspnetmvcapp/. ./
 RUN mkdir C:\Contrast
 COPY --from=contrast/agent-dotnet-framework:latest C:\Contrast C:\Contrast
 
-# >>> ADD CONTRAST CONFIGURATION FILE <<<
-COPY ./contrast_security.yaml C:\Contrast\contrast_security.yaml
-
 # >>> SET CONTRAST PROFILER ENV VARS <<<
 # Enable the .NET Profiling API
 ENV COR_ENABLE_PROFILING=1
@@ -42,8 +39,12 @@ ENV COR_PROFILER={EFEB8EE0-6D39-4347-A5FE-4D0C88BC5BC1}
 ENV COR_PROFILER_PATH_32=C:\Contrast\runtimes\win-x86\native\ContrastProfiler.dll
 ENV COR_PROFILER_PATH_64=C:\Contrast\runtimes\win-x64\native\ContrastProfiler.dll
 
-# (Optional) Set path to Contrast YAML configuration file if one is provided
-ENV CONTRAST_CONFIG_PATH=C:\Contrast\contrast_security.yaml
+# >>> SET CONTRAST AGENT ENV VARS <<<
+# Agent configuration
+ENV CONTRAST__AGENT__LOGGER__LEVEL=INFO
+ENV CONTRAST__AGENT__LOGGER__STDOUT=true
+ENV CONTRAST__ASSESS__ENABLE=true
+ENV CONTRAST__PROTECT__ENABLE=true
 
 # Note: Contrast API credentials (CONTRAST__API_*) are NOT set here.
 # They will be injected securely via AWS Secrets Manager and ECS Task Definition.
