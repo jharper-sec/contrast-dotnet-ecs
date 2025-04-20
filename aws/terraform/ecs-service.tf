@@ -133,8 +133,8 @@ resource "aws_ecs_task_definition" "dotnet_contrast" {
 
       healthCheck = {
         command = [
-          "CMD-SHELL",
-          "curl -f http://localhost/ || exit 1"
+          "PowerShell",
+          "try { $response = Invoke-WebRequest -Uri 'http://localhost/' -UseBasicParsing; if ($response.StatusCode -eq 200) { exit 0 } else { exit 1 } } catch { exit 1 }"
         ]
         interval    = 30
         timeout     = 5
@@ -161,16 +161,16 @@ resource "aws_ecs_task_definition" "dotnet_contrast" {
         }
       ]
 
-      environment = [
-        {
-          name  = "CONTRAST__APPLICATION__NAME"
-          value = "dotnet-framework-ecs-demo"
-        },
-        {
-          name  = "CONTRAST__SERVER__NAME"
-          value = "ecs-windows-${var.name_prefix}"
-        }
-      ]
+      # environment = [
+      #   {
+      #     name  = "CONTRAST__APPLICATION__NAME"
+      #     value = "dotnet-framework-ecs-demo"
+      #   },
+      #   {
+      #     name  = "CONTRAST__SERVER__NAME"
+      #     value = "ecs-windows-${var.name_prefix}"
+      #   }
+      # ]
     }
   ])
 }
