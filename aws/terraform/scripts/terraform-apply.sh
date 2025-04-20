@@ -34,8 +34,8 @@ if [ ! -f "terraform.tfvars" ]; then
   fi
 fi
 
-# Initialize Terraform
-echo "Initializing Terraform..."
+# Initialize Terraform with remote backend
+echo "Initializing Terraform with remote backend..."
 terraform init
 
 if [ $? -ne 0 ]; then

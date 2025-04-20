@@ -8,6 +8,14 @@ terraform {
     }
   }
   required_version = ">= 1.0.0"
+  
+  backend "s3" {
+    bucket         = "contrast-dotnet-ecs-terraform-state"
+    key            = "contrast-dotnet-ecs/terraform.tfstate"
+    region         = "us-east-2"
+    dynamodb_table = "terraform-state-lock"
+    encrypt        = true
+  }
 }
 
 provider "aws" {
