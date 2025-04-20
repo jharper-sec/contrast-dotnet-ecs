@@ -36,7 +36,9 @@ jobs:
     uses: ./.github/workflows/build-docker.yml
   
   deploy:
-    needs: infrastructure
+    needs:
+      - infrastructure
+      - docker
     if: github.event_name != 'pull_request'
     permissions:
       id-token: write
