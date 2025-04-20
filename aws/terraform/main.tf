@@ -8,7 +8,7 @@ terraform {
     }
   }
   required_version = ">= 1.0.0"
-  
+
   backend "s3" {
     bucket         = "contrast-dotnet-ecs-terraform-state"
     key            = "contrast-dotnet-ecs/terraform.tfstate"
