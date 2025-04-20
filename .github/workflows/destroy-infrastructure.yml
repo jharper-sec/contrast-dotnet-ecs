@@ -1,0 +1,81 @@
+name: Destroy Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to destroy'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+      confirmation:
+        description: 'Type "destroy" to confirm deletion of infrastructure'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check confirmation
+        if: inputs.confirmation != 'destroy'
+        run: |
+          echo "Confirmation text does not match 'destroy'. Aborting for safety."
+          exit 1
+
+  terraform-destroy:
+    needs: validate
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: ./aws/terraform
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+    
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+    
+    - name: Create terraform.tfvars
+      run: |
+        cat > terraform.tfvars << EOF
+        aws_region = "${{ secrets.AWS_REGION || 'us-east-1' }}"
+        vpc_id = "${{ secrets.VPC_ID }}"
+        subnet_ids = [${{ secrets.SUBNET_IDS }}]
+        contrast_secret_name = "${{ secrets.CONTRAST_SECRET_NAME }}"
+        launch_type = "FARGATE"
+        os_family = "WINDOWS_SERVER_2022_CORE"
+        assign_public_ip = true
+        EOF
+        
+        # Format the dynamically created file
+        terraform fmt terraform.tfvars
+    
+    - name: Terraform Init
+      run: terraform init
+    
+    - name: Terraform Destroy
+      run: |
+        echo "WARNING: Destroying all infrastructure in ${{ inputs.environment }} environment"
+        terraform destroy -auto-approve
+        
+    - name: Verification
+      if: success()
+      run: |
+        echo "Infrastructure successfully destroyed."
+        echo "Note: S3 state bucket and DynamoDB lock table are preserved."
