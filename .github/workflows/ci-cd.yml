@@ -3,17 +3,28 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [ master ]
+    paths:
+      - 'src/**'
+      - 'docker/**'
+      - 'aws/terraform/**'
+      - '.github/workflows/**'
   pull_request:
     branches: [ master ]
+    paths:
+      - 'src/**'
+      - 'docker/**'
+      - 'aws/terraform/**'
+      - '.github/workflows/**'
   workflow_dispatch:
 
 jobs:
   build:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.modified, 'src/') || contains(github.event.pull_request.changed_files, 'src/')
     uses: ./.github/workflows/build-dotnet.yml
   
   docker:
     needs: build
-    if: github.event_name != 'pull_request'
+    if: (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.modified, 'src/') || contains(github.event.head_commit.modified, 'docker/') || contains(github.event.pull_request.changed_files, 'src/') || contains(github.event.pull_request.changed_files, 'docker/')) && github.event_name != 'pull_request'
     permissions:
       id-token: write
       contents: read
@@ -22,7 +33,7 @@ jobs:
   
   infrastructure:
     needs: docker
-    if: github.event_name != 'pull_request'
+    if: (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.modified, 'aws/terraform/') || contains(github.event.pull_request.changed_files, 'aws/terraform/')) && github.event_name != 'pull_request'
     permissions:
       id-token: write
       contents: read
