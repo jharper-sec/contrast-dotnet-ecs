@@ -27,7 +27,7 @@ if [[ $CONFIRM != "y" && $CONFIRM != "Y" ]]; then
 fi
 
 # Create ECR repository if it doesn't exist
-aws ecr describe-repositories --repository-names $REPOSITORY_NAME --region $AWS_REGION > /dev/null 2>&1
+aws ecr describe-repositories --repository-names $REPOSITORY_NAME --region $AWS_REGION >/dev/null 2>&1
 if [ $? -ne 0 ]; then
   echo "Creating ECR repository: $REPOSITORY_NAME"
   aws ecr create-repository --repository-name $REPOSITORY_NAME --region $AWS_REGION

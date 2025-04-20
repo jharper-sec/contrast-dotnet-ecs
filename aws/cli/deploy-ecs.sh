@@ -13,10 +13,10 @@ SERVICE_TEMPLATE_PATH="../cloudformation/ecs-service.yaml"
 
 # AWS resource specific parameters
 CLUSTER_NAME="windows-contrast-cluster"
-VPC_ID="vpc-xxxxxxxx" # Replace with your VPC ID
+VPC_ID="vpc-xxxxxxxx"                        # Replace with your VPC ID
 SUBNET_IDS="subnet-xxxxxxxx,subnet-yyyyyyyy" # Replace with your subnet IDs
 CONTRAST_SECRET_NAME="contrast-agent-credentials"
-LAUNCH_TYPE="FARGATE" # or EC2
+LAUNCH_TYPE="FARGATE"                # or EC2
 OS_FAMILY="WINDOWS_SERVER_2022_CORE" # Match your container base OS
 
 # Confirm before proceeding
@@ -59,10 +59,10 @@ aws cloudformation deploy \
   --region $AWS_REGION \
   --capabilities CAPABILITY_NAMED_IAM \
   --parameter-overrides \
-    ClusterName=$CLUSTER_NAME \
-    LaunchType=$LAUNCH_TYPE \
-    VpcId=$VPC_ID \
-    SubnetIds=$SUBNET_IDS
+  ClusterName=$CLUSTER_NAME \
+  LaunchType=$LAUNCH_TYPE \
+  VpcId=$VPC_ID \
+  SubnetIds=$SUBNET_IDS
 
 if [ $? -ne 0 ]; then
   echo "Failed to deploy ECS cluster."
@@ -86,15 +86,15 @@ aws cloudformation deploy \
   --region $AWS_REGION \
   --capabilities CAPABILITY_NAMED_IAM \
   --parameter-overrides \
-    ClusterName=$CLUSTER_NAME \
-    ImageRepositoryUri=$ECR_REPO_URI \
-    ImageTag="latest" \
-    LaunchType=$LAUNCH_TYPE \
-    OperatingSystemFamily=$OS_FAMILY \
-    ContrastSecretName=$CONTRAST_SECRET_NAME \
-    VpcId=$VPC_ID \
-    SubnetIds=$SUBNET_IDS \
-    AssignPublicIp=ENABLED
+  ClusterName=$CLUSTER_NAME \
+  ImageRepositoryUri=$ECR_REPO_URI \
+  ImageTag="latest" \
+  LaunchType=$LAUNCH_TYPE \
+  OperatingSystemFamily=$OS_FAMILY \
+  ContrastSecretName=$CONTRAST_SECRET_NAME \
+  VpcId=$VPC_ID \
+  SubnetIds=$SUBNET_IDS \
+  AssignPublicIp=ENABLED
 
 if [ $? -ne 0 ]; then
   echo "Failed to deploy ECS service."

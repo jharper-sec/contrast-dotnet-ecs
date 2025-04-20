@@ -15,7 +15,7 @@ if [[ $CONFIRM != "y" && $CONFIRM != "Y" ]]; then
 fi
 
 # Check if terraform is installed
-if ! command -v terraform &> /dev/null; then
+if ! command -v terraform &>/dev/null; then
   echo "Error: Terraform is not installed. Please install Terraform first."
   exit 1
 fi
